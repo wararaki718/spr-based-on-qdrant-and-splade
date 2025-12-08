@@ -3,7 +3,7 @@ from light_splade import SpladeEncoder
 from qdrant_client import models
 
 
-def encode_documents(encoder: SpladeEncoder, docs: list[str]) -> list[models.PointStruct]:
+def encode_documents2points(encoder: SpladeEncoder, docs: list[str]) -> list[models.PointStruct]:
     token2id: dict[str, int] = encoder.tokenizer.get_vocab()
 
     # Encode documents to sparse vectors

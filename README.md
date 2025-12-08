@@ -1,4 +1,4 @@
-# spr-based-on-qdrant-and-splade
+# Sparse retrieval based on Qdrant and SPLADE
 
 ## setup
 
