@@ -49,6 +49,7 @@ def main() -> None:
         collection_name=collection_name,
         query=query_sparse_vector,
         using="text-sparse",
+        limit=3,
     )
     show_results(search_result.points)
 
