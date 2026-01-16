@@ -1,11 +1,22 @@
+import time
 from light_splade import SpladeEncoder
 from qdrant_client import QdrantClient, models
 
-from encode import encode_documents2points, encode_query2vector
+from encode import encode_documents2points, encode_documents2points_batched, encode_query2vector
 from utils import show_results
 
 
-def main() -> None:
+def main(use_batched: bool = False, batch_size: int = 1000) -> None:
+    """
+    Main pipeline with optional batch processing support.
+    
+    Args:
+        use_batched: If True, use batched encoding for large datasets.
+                    Useful for processing millions of documents.
+        batch_size: Size of each batch when use_batched=True
+    """
+    start_time = time.time()
+    
     # Initialize Qdrant client and SPLADE encoder
     client = QdrantClient(url="http://localhost:6333")
     encoder = SpladeEncoder(model_path="bizreach-inc/light-splade-japanese-28M")
@@ -30,14 +41,24 @@ def main() -> None:
     )
     print(f"Collection '{collection_name}' created.")
 
-    # Upsert points
+    # Upsert points with optional batching
     # https://qdrant.tech/documentation/concepts/collections/#collection-with-sparse-vectors
-    points = encode_documents2points(encoder, docs)
-    client.upsert(
-        collection_name=collection_name,
-        points=points,
-    )
-    print(f"Upserted {len(points)} points.\n")
+    if use_batched and len(docs) > batch_size:
+        # Stream large batches to Qdrant
+        for batch_points in encode_documents2points_batched(encoder, docs, batch_size):
+            client.upsert(
+                collection_name=collection_name,
+                points=batch_points,
+            )
+            print(f"Upserted {len(batch_points)} points")
+    else:
+        # Standard single upsert for small datasets (optimized with parallel processing)
+        points = encode_documents2points(encoder, docs, use_parallel=len(docs) > 100)
+        client.upsert(
+            collection_name=collection_name,
+            points=points,
+        )
+        print(f"Upserted {len(points)} points.\n")
 
     # Search points
     # https://qdrant.tech/documentation/concepts/search/#search-api
@@ -57,7 +78,8 @@ def main() -> None:
     client.delete_collection(collection_name=collection_name)
     print(f"Collection '{collection_name}' deleted.")
 
-    print("DONE")
+    elapsed_time = time.time() - start_time
+    print(f"DONE (elapsed: {elapsed_time:.2f}s)")
 
 
 if __name__ == "__main__":
